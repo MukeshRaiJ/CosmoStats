@@ -7,10 +7,46 @@ import {
   Calendar,
   Globe,
   Award,
+  LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const countSatellites = (satellites, isIndian = false) => {
+interface Constellation {
+  quantity?: number;
+  totalConstellationMass?: number;
+}
+
+interface Satellite {
+  country?: string;
+  mass?: number;
+  quantity?: number;
+  constellation?: Constellation;
+  satellites?: Satellite[];
+}
+
+interface Launch {
+  dateTime: string;
+  launchOutcome: string;
+  orbit?: string;
+  payload: {
+    totalMass?: number;
+    satellites: Satellite[];
+  };
+}
+
+interface LaunchData {
+  launches: Launch[];
+}
+
+interface Stat {
+  title: string;
+  value: number | string;
+  subtext: string;
+  icon: LucideIcon;
+  gradient: string;
+}
+
+const countSatellites = (satellites: Satellite[], isIndian = false): number => {
   return satellites.reduce((count, sat) => {
     if (sat.satellites) {
       return count + countSatellites(sat.satellites, isIndian);
@@ -48,11 +84,11 @@ const countSatellites = (satellites, isIndian = false) => {
 };
 
 interface StatsGridProps {
-  data: any;
+  data: LaunchData;
 }
 
 const StatsGrid: React.FC<StatsGridProps> = ({ data }) => {
-  const stats = useMemo(() => {
+  const stats: Stat[] = useMemo(() => {
     const totalLaunches = data.launches.length;
     const successfulLaunches = data.launches.filter(
       (l) => l.launchOutcome === "Success"
@@ -80,7 +116,9 @@ const StatsGrid: React.FC<StatsGridProps> = ({ data }) => {
     const uniqueOrbits = new Set(
       data.launches
         .map((launch) => launch.orbit)
-        .filter((orbit) => orbit && orbit.length > 0)
+        .filter(
+          (orbit): orbit is string => orbit !== undefined && orbit.length > 0
+        )
     ).size;
 
     let currentStreak = 0;
