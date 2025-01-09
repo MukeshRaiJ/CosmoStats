@@ -9,8 +9,9 @@ import {
   Award,
   LucideIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
+// Interfaces remain the same
 interface Constellation {
   quantity?: number;
   totalConstellationMass?: number;
@@ -46,62 +47,141 @@ interface Stat {
   gradient: string;
 }
 
+// Helper function remains the same
 const countSatellites = (satellites: Satellite[], isIndian = false): number => {
   return satellites.reduce((count, sat) => {
     if (sat.satellites) {
       return count + countSatellites(sat.satellites, isIndian);
     }
-
     if (sat.constellation?.quantity) {
-      if (
-        (isIndian && sat.country === "India") ||
+      return (
+        count +
+        ((isIndian && sat.country === "India") ||
         (!isIndian && sat.country !== "India")
-      ) {
-        return count + sat.constellation.quantity;
-      }
-      return count;
+          ? sat.constellation.quantity
+          : 0)
+      );
     }
-
     if (sat.quantity) {
-      if (
-        (isIndian && sat.country === "India") ||
+      return (
+        count +
+        ((isIndian && sat.country === "India") ||
         (!isIndian && sat.country !== "India")
-      ) {
-        return count + sat.quantity;
-      }
-      return count;
+          ? sat.quantity
+          : 0)
+      );
     }
-
-    if (
-      (isIndian && sat.country === "India") ||
+    return (
+      count +
+      ((isIndian && sat.country === "India") ||
       (!isIndian && sat.country !== "India")
-    ) {
-      return count + 1;
-    }
-
-    return count;
+        ? 1
+        : 0)
+    );
   }, 0);
 };
 
-interface StatsGridProps {
-  data: LaunchData;
-}
+const StatCard = ({ stat, index }: { stat: Stat; index: number }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        delay: index * 0.1,
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        transition={{ duration: 0.2 }}
+        className="h-full"
+      >
+        <Card className="group h-full bg-slate-900/50 backdrop-blur-lg border-slate-700/50 relative overflow-hidden hover:border-blue-500/50 transition-all duration-300">
+          {/* Gradient overlay */}
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-all duration-700 ease-out`}
+          />
 
-const StatsGrid: React.FC<StatsGridProps> = ({ data }) => {
+          {/* Floating orb effect */}
+          <motion.div
+            className={`absolute w-32 h-32 rounded-full bg-gradient-to-r ${stat.gradient} blur-3xl opacity-5 -z-10`}
+            animate={{
+              x: [0, 10, 0],
+              y: [0, -10, 0],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+
+          {/* Main content */}
+          <div className="relative z-10 p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-slate-100 tracking-wide">
+                {stat.title}
+              </h3>
+              <motion.div
+                whileHover={{
+                  rotate: 360,
+                  scale: 1.2,
+                }}
+                transition={{ duration: 0.4 }}
+                className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient} bg-opacity-10 hover:bg-opacity-20 transition-all duration-300`}
+              >
+                <stat.icon className="h-4 w-4 text-white" />
+              </motion.div>
+            </div>
+
+            {/* Value */}
+            <div className="space-y-2">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 + 0.2 }}
+                className={`text-4xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
+              >
+                {stat.value}
+              </motion.div>
+
+              {/* Subtext with decorative lines */}
+              <div className="flex items-center space-x-2">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                <p className="text-xs text-slate-300 font-medium">
+                  {stat.subtext}
+                </p>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom highlight */}
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-500/20 to-transparent" />
+
+          {/* Side highlight */}
+          <div className="absolute top-0 bottom-0 right-0 w-px bg-gradient-to-b from-transparent via-slate-500/20 to-transparent" />
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const StatsGrid: React.FC<{ data: LaunchData }> = ({ data }) => {
   const stats: Stat[] = useMemo(() => {
     const totalLaunches = data.launches.length;
     const successfulLaunches = data.launches.filter(
       (l) => l.launchOutcome === "Success"
     ).length;
-
-    const foreignSatellites = data.launches.reduce((acc, launch) => {
-      return acc + countSatellites(launch.payload.satellites, false);
-    }, 0);
+    const foreignSatellites = data.launches.reduce(
+      (acc, launch) => acc + countSatellites(launch.payload.satellites, false),
+      0
+    );
 
     const totalMass = data.launches.reduce((acc, launch) => {
-      if (launch.payload.totalMass) {
-        return acc + launch.payload.totalMass;
-      }
+      if (launch.payload.totalMass) return acc + launch.payload.totalMass;
       return (
         acc +
         launch.payload.satellites.reduce((massAcc, sat) => {
@@ -123,11 +203,8 @@ const StatsGrid: React.FC<StatsGridProps> = ({ data }) => {
 
     let currentStreak = 0;
     for (let i = data.launches.length - 1; i >= 0; i--) {
-      if (data.launches[i].launchOutcome === "Success") {
-        currentStreak++;
-      } else {
-        break;
-      }
+      if (data.launches[i].launchOutcome === "Success") currentStreak++;
+      else break;
     }
 
     const years = data.launches.map((launch) =>
@@ -185,38 +262,12 @@ const StatsGrid: React.FC<StatsGridProps> = ({ data }) => {
   }, [data]);
 
   return (
-    <div className="grid gap-4 mb-8 grid-cols-2 lg:grid-cols-3">
-      {stats.map((stat, index) => (
-        <motion.div
-          key={index}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-        >
-          <Card className="bg-slate-900/50 backdrop-blur-lg backdrop-saturate-150 border border-slate-700/50 relative overflow-hidden group hover:border-blue-500/50 transition-all duration-300">
-            <motion.div
-              initial={false}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className={`absolute inset-0 bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-            />
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-100">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors duration-300" />
-            </CardHeader>
-            <CardContent>
-              <div
-                className={`text-2xl md:text-3xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
-              >
-                {stat.value}
-              </div>
-              <p className="text-xs text-slate-400">{stat.subtext}</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {stats.map((stat, index) => (
+          <StatCard key={index} stat={stat} index={index} />
+        ))}
+      </div>
     </div>
   );
 };
