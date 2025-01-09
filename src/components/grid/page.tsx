@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, memo } from "react";
 import { motion } from "framer-motion";
 import {
   Rocket,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
-// Interfaces remain the same
+// Types
 interface Constellation {
   quantity?: number;
   totalConstellationMass?: number;
@@ -37,6 +37,9 @@ interface Launch {
 
 interface LaunchData {
   launches: Launch[];
+  metadata: {
+    lastUpdated: string;
+  };
 }
 
 interface Stat {
@@ -47,41 +50,64 @@ interface Stat {
   gradient: string;
 }
 
-// Helper function remains the same
+// Utility Functions
 const countSatellites = (satellites: Satellite[], isIndian = false): number => {
   return satellites.reduce((count, sat) => {
     if (sat.satellites) {
       return count + countSatellites(sat.satellites, isIndian);
     }
-    if (sat.constellation?.quantity) {
-      return (
-        count +
-        ((isIndian && sat.country === "India") ||
-        (!isIndian && sat.country !== "India")
-          ? sat.constellation.quantity
-          : 0)
-      );
-    }
-    if (sat.quantity) {
-      return (
-        count +
-        ((isIndian && sat.country === "India") ||
-        (!isIndian && sat.country !== "India")
-          ? sat.quantity
-          : 0)
-      );
-    }
-    return (
-      count +
-      ((isIndian && sat.country === "India") ||
-      (!isIndian && sat.country !== "India")
-        ? 1
-        : 0)
-    );
+    const isCountryMatch = isIndian
+      ? sat.country === "India"
+      : sat.country !== "India";
+    return count + calculateSatelliteCount(sat, isCountryMatch);
   }, 0);
 };
 
-const StatCard = ({ stat, index }: { stat: Stat; index: number }) => {
+const calculateSatelliteCount = (
+  satellite: Satellite,
+  isCountryMatch: boolean
+): number => {
+  if (satellite.constellation?.quantity) {
+    return isCountryMatch ? satellite.constellation.quantity : 0;
+  }
+  if (satellite.quantity) {
+    return isCountryMatch ? satellite.quantity : 0;
+  }
+  return isCountryMatch ? 1 : 0;
+};
+
+const calculateTotalMass = (launches: Launch[]): number => {
+  return launches.reduce((acc, launch) => {
+    if (launch.payload.totalMass) return acc + launch.payload.totalMass;
+    return acc + calculatePayloadMass(launch.payload.satellites);
+  }, 0);
+};
+
+const calculatePayloadMass = (satellites: Satellite[]): number => {
+  return satellites.reduce((acc, sat) => {
+    if (sat.mass) return acc + sat.mass;
+    if (sat.constellation?.totalConstellationMass) {
+      return acc + sat.constellation.totalConstellationMass;
+    }
+    return acc;
+  }, 0);
+};
+
+// Components
+const StatCard = memo<{
+  stat: Stat;
+  index: number;
+  isDark: boolean;
+}>(({ stat, index, isDark }) => {
+  const baseStyles = {
+    card: `group h-full ${isDark ? "bg-slate-900/50" : "bg-white/50"} 
+           backdrop-blur-lg border-slate-700/50 relative overflow-hidden 
+           hover:border-blue-500/50 transition-all duration-300`,
+    text: isDark ? "text-slate-100" : "text-slate-900",
+    icon: `p-2 rounded-lg bg-gradient-to-br ${stat.gradient} 
+           bg-opacity-10 hover:bg-opacity-20 transition-all duration-300`,
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -97,15 +123,17 @@ const StatCard = ({ stat, index }: { stat: Stat; index: number }) => {
         transition={{ duration: 0.2 }}
         className="h-full"
       >
-        <Card className="group h-full bg-slate-900/50 backdrop-blur-lg border-slate-700/50 relative overflow-hidden hover:border-blue-500/50 transition-all duration-300">
-          {/* Gradient overlay */}
+        <Card className={baseStyles.card}>
+          {/* Gradient Overlay */}
           <div
-            className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-all duration-700 ease-out`}
+            className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} 
+                          opacity-0 group-hover:opacity-10 transition-all duration-700 ease-out`}
           />
 
-          {/* Floating orb effect */}
+          {/* Animated Background */}
           <motion.div
-            className={`absolute w-32 h-32 rounded-full bg-gradient-to-r ${stat.gradient} blur-3xl opacity-5 -z-10`}
+            className={`absolute w-32 h-32 rounded-full bg-gradient-to-r ${stat.gradient} 
+                       blur-3xl opacity-5 -z-10`}
             animate={{
               x: [0, 10, 0],
               y: [0, -10, 0],
@@ -117,37 +145,34 @@ const StatCard = ({ stat, index }: { stat: Stat; index: number }) => {
             }}
           />
 
-          {/* Main content */}
+          {/* Content */}
           <div className="relative z-10 p-6">
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-slate-100 tracking-wide">
+              <h3
+                className={`text-sm font-medium ${baseStyles.text} tracking-wide`}
+              >
                 {stat.title}
               </h3>
               <motion.div
-                whileHover={{
-                  rotate: 360,
-                  scale: 1.2,
-                }}
+                whileHover={{ rotate: 360, scale: 1.2 }}
                 transition={{ duration: 0.4 }}
-                className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient} bg-opacity-10 hover:bg-opacity-20 transition-all duration-300`}
+                className={baseStyles.icon}
               >
                 <stat.icon className="h-4 w-4 text-white" />
               </motion.div>
             </div>
 
-            {/* Value */}
             <div className="space-y-2">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 + 0.2 }}
-                className={`text-4xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
+                className={`text-4xl font-bold bg-gradient-to-r ${stat.gradient} 
+                           bg-clip-text text-transparent`}
               >
                 {stat.value}
               </motion.div>
 
-              {/* Subtext with decorative lines */}
               <div className="flex items-center space-x-2">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                 <p className="text-xs text-slate-300 font-medium">
@@ -158,19 +183,26 @@ const StatCard = ({ stat, index }: { stat: Stat; index: number }) => {
             </div>
           </div>
 
-          {/* Bottom highlight */}
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-500/20 to-transparent" />
-
-          {/* Side highlight */}
-          <div className="absolute top-0 bottom-0 right-0 w-px bg-gradient-to-b from-transparent via-slate-500/20 to-transparent" />
+          {/* Decorative Borders */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px 
+                         bg-gradient-to-r from-transparent via-slate-500/20 to-transparent"
+          />
+          <div
+            className="absolute top-0 bottom-0 right-0 w-px 
+                         bg-gradient-to-b from-transparent via-slate-500/20 to-transparent"
+          />
         </Card>
       </motion.div>
     </motion.div>
   );
-};
+});
 
-const StatsGrid: React.FC<{ data: LaunchData }> = ({ data }) => {
-  const stats: Stat[] = useMemo(() => {
+StatCard.displayName = "StatCard";
+
+// Stats Calculation Hook
+const useStatsCalculation = (data: LaunchData) => {
+  return useMemo(() => {
     const totalLaunches = data.launches.length;
     const successfulLaunches = data.launches.filter(
       (l) => l.launchOutcome === "Success"
@@ -180,19 +212,7 @@ const StatsGrid: React.FC<{ data: LaunchData }> = ({ data }) => {
       0
     );
 
-    const totalMass = data.launches.reduce((acc, launch) => {
-      if (launch.payload.totalMass) return acc + launch.payload.totalMass;
-      return (
-        acc +
-        launch.payload.satellites.reduce((massAcc, sat) => {
-          if (sat.mass) return massAcc + sat.mass;
-          if (sat.constellation?.totalConstellationMass)
-            return massAcc + sat.constellation.totalConstellationMass;
-          return massAcc;
-        }, 0)
-      );
-    }, 0);
-
+    const totalMass = calculateTotalMass(data.launches);
     const uniqueOrbits = new Set(
       data.launches
         .map((launch) => launch.orbit)
@@ -260,16 +280,25 @@ const StatsGrid: React.FC<{ data: LaunchData }> = ({ data }) => {
       },
     ];
   }, [data]);
-
-  return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {stats.map((stat, index) => (
-          <StatCard key={index} stat={stat} index={index} />
-        ))}
-      </div>
-    </div>
-  );
 };
+
+// Main Component
+const StatsGrid: React.FC<{ data: LaunchData; isDark: boolean }> = memo(
+  ({ data, isDark }) => {
+    const stats = useStatsCalculation(data);
+
+    return (
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {stats.map((stat, index) => (
+            <StatCard key={index} stat={stat} index={index} isDark={isDark} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+);
+
+StatsGrid.displayName = "StatsGrid";
 
 export default StatsGrid;

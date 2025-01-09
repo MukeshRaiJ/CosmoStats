@@ -1,38 +1,14 @@
 "use client";
-import React, {
-  useState,
-  useEffect,
-  createContext,
-  useContext,
-  useCallback,
-  memo,
-  useMemo,
-} from "react";
+import React, { useState, useCallback, memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatsGrid from "@/components/grid/page";
 import Footer from "@/components/layout/footer";
 import Hero from "@/components/layout/hero";
-import {
-  ThemeContextType,
-  AnimatedBackgroundProps,
-  ThemeProviderProps,
-  LaunchData,
-  LaunchVisualizerContentProps,
-  ANIMATION_VARIANTS,
-} from "@/theme/types";
-
-// Theme Context with proper typing
-const ThemeContext = createContext<ThemeContextType>({
-  isDark: false,
-  toggle: () => {},
-});
-
-// Theme Hook
-const useTheme = () => useContext(ThemeContext);
+import { LaunchData } from "@/theme/types";
 
 // Memoized Animated Background Component
-const AnimatedBackground = memo<AnimatedBackgroundProps>(({ isDark }) => {
+const AnimatedBackground = memo<{ isDark: boolean }>(({ isDark }) => {
   const bgGradient = useMemo(
     () =>
       isDark
@@ -97,18 +73,16 @@ const AnimatedBackground = memo<AnimatedBackgroundProps>(({ isDark }) => {
 AnimatedBackground.displayName = "AnimatedBackground";
 
 // Memoized Theme Toggle Component
-const ThemeToggle = memo(() => {
-  const { isDark, toggle } = useTheme();
-
-  return (
+const ThemeToggle = memo<{ isDark: boolean; onToggle: () => void }>(
+  ({ isDark, onToggle }) => (
     <button
-      onClick={toggle}
+      onClick={onToggle}
       className="fixed top-4 right-4 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer z-[9999]"
     >
       {isDark ? "☀️" : "🌙"}
     </button>
-  );
-});
+  )
+);
 
 ThemeToggle.displayName = "ThemeToggle";
 
@@ -165,73 +139,18 @@ const TabsSection = memo<{
 
 TabsSection.displayName = "TabsSection";
 
-// Optimized Launch Visualizer Content Component
-const LaunchVisualizerContent = memo<LaunchVisualizerContentProps>(
-  ({ launchData }) => {
-    const [selectedTab, setSelectedTab] = useState<string>("vehicles");
-    const { isDark } = useTheme();
-
-    const handleTabChange = useCallback((tab: string) => {
-      setSelectedTab(tab);
-    }, []);
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full relative z-10 p-4"
-      >
-        <div className="mb-8">
-          <StatsGrid data={launchData} />
-        </div>
-
-        <TabsSection
-          selectedTab={selectedTab}
-          onTabChange={handleTabChange}
-          isDark={isDark}
-        />
-
-        <Footer />
-      </motion.div>
-    );
-  }
-);
-
-LaunchVisualizerContent.displayName = "LaunchVisualizerContent";
-
-// Theme Provider Component with memoized toggle
-const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+// Main App Component
+const LaunchVisualizer = () => {
   const [isDark, setIsDark] = useState(false);
-
-  const toggle = useCallback(() => {
-    setIsDark((prev) => !prev);
-  }, []);
-
-  const value = useMemo(() => ({ isDark, toggle }), [isDark, toggle]);
-
-  return (
-    <ThemeContext.Provider value={value}>
-      <div
-        className={`min-h-screen transition-colors duration-300 ${
-          isDark ? "bg-slate-900 text-slate-100" : "bg-slate-50 text-slate-900"
-        }`}
-      >
-        <AnimatedBackground
-          isDark={isDark}
-          variant={ANIMATION_VARIANTS.GENTLE}
-        />
-        {children}
-      </div>
-    </ThemeContext.Provider>
-  );
-};
-
-// Main LaunchVisualizer Component
-const LaunchVisualizer = memo(() => {
   const [launchData, setLaunchData] = useState<LaunchData | null>(null);
+  const [selectedTab, setSelectedTab] = useState<string>("vehicles");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const toggleTheme = useCallback(() => setIsDark((prev) => !prev), []);
+  const handleTabChange = useCallback((tab: string) => setSelectedTab(tab), []);
+
+  // Fetch data
+  React.useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch("/isro_data.json");
@@ -259,27 +178,39 @@ const LaunchVisualizer = memo(() => {
   }
 
   return (
-    <div className="min-h-screen relative">
-      <ThemeToggle />
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        isDark ? "bg-slate-900 text-slate-100" : "bg-slate-50 text-slate-900"
+      }`}
+    >
+      <AnimatedBackground isDark={isDark} />
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+
       <Hero
         title="ISRO Launch Analytics"
         subtitle={`Exploring India's Journey to the Stars (Last Updated: ${launchData.metadata.lastUpdated})`}
         videoUrl="/0108.mp4"
       />
-      <LaunchVisualizerContent launchData={launchData} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full relative z-10 p-4"
+      >
+        <div className="mb-8">
+          <StatsGrid data={launchData} isDark={isDark} />
+        </div>
+
+        <TabsSection
+          selectedTab={selectedTab}
+          onTabChange={handleTabChange}
+          isDark={isDark}
+        />
+
+        <Footer />
+      </motion.div>
     </div>
-  );
-});
-
-LaunchVisualizer.displayName = "LaunchVisualizer";
-
-// Wrapped component remains the same as it's the top-level component
-const WrappedLaunchVisualizer: React.FC = () => {
-  return (
-    <ThemeProvider>
-      <LaunchVisualizer />
-    </ThemeProvider>
   );
 };
 
-export default WrappedLaunchVisualizer;
+export default LaunchVisualizer;
