@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperType } from "swiper";
@@ -28,21 +28,55 @@ import RocketNavigation from "./button";
 import vehicleData from "./vehicle.json";
 import launch_vehicle_images from "./rocket_image";
 
-// Animation configuration for default values
-const defaultAnimation = {
+// Animation configuration
+interface AnimationConfig {
+  particleCount: number;
+  rotationDuration: number;
+  particleDurationMin: number;
+  particleDurationMax: number;
+}
+
+const defaultAnimation: AnimationConfig = {
   particleCount: 20,
   rotationDuration: 20,
   particleDurationMin: 5,
   particleDurationMax: 15,
 };
 
-// Keep all interface definitions...
 interface PayloadMass {
-  mass: number | { min: number; max: number } | Record<string, any>;
+  mass: number | { min: number; max: number } | Record<string, number>;
   altitude?: number;
   inclination?: number;
   perigee?: number;
   apogee?: number;
+}
+
+interface StageDetails {
+  engine_type?: string;
+  propellant?: string | string[];
+  thrust?: string;
+  engines?: {
+    total_thrust: string;
+  };
+  burn_time?: string;
+}
+
+interface Colors {
+  background: string;
+  text: string;
+  subText: string;
+  highlight: string;
+  cardBg: string;
+  cardGlow: string;
+  border: string;
+}
+
+interface Dimensions {
+  height?: number;
+  length?: number;
+  diameter?: number;
+  wingspan?: number;
+  mass: number | { min: number; max: number } | Record<string, number>;
 }
 
 interface Vehicle {
@@ -54,13 +88,7 @@ interface Vehicle {
   vehicle_class?: string;
   description?: string;
   cost_per_launch?: string;
-  dimensions: {
-    height?: number;
-    length?: number;
-    diameter?: number;
-    wingspan?: number;
-    mass: number | { min: number; max: number } | Record<string, number>;
-  };
+  dimensions: Dimensions;
   payload_capacity?: {
     LEO?: PayloadMass | Record<string, PayloadMass>;
     GTO?: PayloadMass | Record<string, PayloadMass>;
@@ -68,7 +96,7 @@ interface Vehicle {
     TLI?: PayloadMass;
     max_payload?: number;
   };
-  stages?: Record<string, any>;
+  stages?: Record<string, StageDetails>;
   launch_history: {
     total_launches?: number;
     successes?: number;
@@ -95,7 +123,7 @@ interface RocketSpecCardProps {
   title: string;
   value: string;
   icon: React.ComponentType<{ size: number; className?: string }>;
-  colors: any;
+  colors: Colors;
 }
 
 interface LaunchStatsProps {
@@ -107,31 +135,25 @@ interface LaunchStatsProps {
     first_flight?: string | Record<string, string>;
     last_flight?: string | Record<string, string>;
   };
-  colors: any;
+  colors: Colors;
 }
 
 interface StageCardProps {
   stage: string;
-  details: any;
+  details: StageDetails;
   index: number;
-  colors: any;
+  colors: Colors;
 }
 
 interface RocketShowcaseProps {
   background: string;
   text: string;
   contentBackground: string;
-  animationConfig?: {
-    particleCount: number;
-    rotationDuration: number;
-    particleDurationMin: number;
-    particleDurationMax: number;
-  };
+  animationConfig?: AnimationConfig;
 }
 
-// Keep all utility functions...
 const formatPayloadCapacity = (
-  payload: PayloadMass | Record<string, any> | undefined
+  payload: PayloadMass | Record<string, PayloadMass> | undefined
 ): string => {
   if (!payload) return "N/A";
 
@@ -140,7 +162,7 @@ const formatPayloadCapacity = (
       return `${payload.mass.toLocaleString()}kg`;
     }
     if (typeof payload.mass === "object") {
-      if ("min" in payload.mass) {
+      if ("min" in payload.mass && "max" in payload.mass) {
         return `${payload.mass.min.toLocaleString()}-${payload.mass.max.toLocaleString()}kg`;
       }
     }
@@ -148,7 +170,9 @@ const formatPayloadCapacity = (
 
   const variants = Object.values(payload);
   if (variants.length > 0) {
-    const masses = variants.map((v) => v.mass).filter((m) => m !== undefined);
+    const masses = variants
+      .map((v) => (v as PayloadMass).mass)
+      .filter((m): m is number => typeof m === "number");
     if (masses.length > 0) {
       const min = Math.min(...masses);
       const max = Math.max(...masses);
@@ -191,7 +215,6 @@ const getLatestFlightDate = (
     .split("-")[0];
 };
 
-// Update the RocketSpecCard component
 const RocketSpecCard: React.FC<RocketSpecCardProps> = ({
   title,
   value,
@@ -215,7 +238,6 @@ const RocketSpecCard: React.FC<RocketSpecCardProps> = ({
   );
 };
 
-// Update the LaunchStats component
 const LaunchStats: React.FC<LaunchStatsProps> = ({ stats, colors }) => {
   const total = stats.total_launches || 0;
   const successes = stats.successes || 0;
@@ -294,7 +316,6 @@ const LaunchStats: React.FC<LaunchStatsProps> = ({ stats, colors }) => {
   );
 };
 
-// Update the StageCard component
 const StageCard: React.FC<StageCardProps> = ({
   stage,
   details,
@@ -361,7 +382,6 @@ const StageCard: React.FC<StageCardProps> = ({
   );
 };
 
-// Main Component with colors object
 const RocketShowcase: React.FC<RocketShowcaseProps> = ({
   background,
   text,
@@ -382,8 +402,7 @@ const RocketShowcase: React.FC<RocketShowcaseProps> = ({
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(vehicles[0]);
   const swiperRef = React.useRef<SwiperType>();
 
-  // Define colors object
-  const colors = {
+  const colors: Colors = {
     background,
     text,
     subText: "text-slate-400",
@@ -392,6 +411,22 @@ const RocketShowcase: React.FC<RocketShowcaseProps> = ({
     cardGlow: "bg-blue-500/10",
     border: "border-slate-700/20",
   };
+
+  useEffect(() => {
+    if (animationConfig) {
+      const createParticle = () => {
+        const {} = animationConfig;
+        // Particle animation implementation would go here
+        // This could include creating DOM elements, setting styles, and animating them
+      };
+
+      const interval = setInterval(
+        createParticle,
+        1000 / animationConfig.particleCount
+      );
+      return () => clearInterval(interval);
+    }
+  }, [animationConfig]);
 
   const handleSlideChange = (swiper: SwiperType) => {
     setCurrentIndex(swiper.activeIndex);

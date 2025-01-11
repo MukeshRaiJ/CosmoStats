@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,8 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -29,164 +26,90 @@ import {
   Cell,
   Legend,
   ComposedChart,
+  Line,
+  TooltipProps,
 } from "recharts";
-import _ from "lodash";
-import { LaunchData } from "@/theme/types";
 
-interface OverviewProps {
-  data: LaunchData;
-  colors: {
-    background: string;
-    text: string;
-    subText: string;
-    border: string;
-    glassBg: string;
-    chartGrid: string;
-    chartText: string;
-    chartColors: string[];
-  };
+import { useLaunchStatistics } from "./useLaunchStatistics";
+
+// Define the shape of your launch data
+interface LaunchData {
+  id: string;
+  date: string;
+  vehicle: string;
+  site: string;
+  outcome: string;
+  payload: {
+    satellite: string;
+    country: string;
+    mass?: number;
+  }[];
 }
 
-const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
-  const [chartType, setChartType] = useState("yearlyForeign");
+interface ThemeColors {
+  background: string;
+  text: string;
+  subText: string;
+  border: string;
+  glassBg: string;
+  chartGrid: string;
+  chartText: string;
+  chartColors: string[];
+}
 
-  // Rest of the component remains the same, just remove AnimatedBackground
-  // and useTheme references since we're getting colors as props
+interface OverviewProps {
+  data: LaunchData[];
+  colors: ThemeColors;
+}
 
-  const extractSatellites = (payload) => {
-    let satellites = [];
-    if (!payload.satellites) return satellites;
+interface CustomTooltipProps extends TooltipProps<number, string> {
+  colors: ThemeColors;
+}
 
-    for (const sat of payload.satellites) {
-      if (sat.constellation) {
-        for (let i = 0; i < sat.constellation.quantity; i++) {
-          satellites.push({
-            name: `${sat.name}-${i + 1}`,
-            country: sat.country,
-            mass: sat.constellation.massPerUnit,
-            massUnit: sat.constellation.massUnit,
-          });
-        }
-      } else if (sat.satellites) {
-        const nestedSats = extractSatellites({ satellites: sat.satellites });
-        satellites = satellites.concat(nestedSats);
-      } else if (sat.quantity && sat.massPerUnit) {
-        for (let i = 0; i < sat.quantity; i++) {
-          satellites.push({
-            name: `${sat.name}-${i + 1}`,
-            country: sat.country,
-            mass: sat.massPerUnit,
-            massUnit: sat.massUnit,
-          });
-        }
-      } else {
-        satellites.push(sat);
-      }
-    }
-    return satellites;
-  };
+interface TooltipPayloadItem {
+  name: string;
+  value: number | string;
+  unit?: string;
+}
 
-  // Mobile-optimized tooltip
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div
-          className={`${colors.glassBg} p-2 border ${colors.border} rounded-lg shadow-xl max-w-[200px]`}
-        >
-          <p className={`${colors.text} font-medium text-sm truncate`}>
-            {label}
+const CustomTooltip: React.FC<CustomTooltipProps> = ({
+  active,
+  payload,
+  label,
+  colors,
+}) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div
+      className={`${colors.glassBg} p-2 border ${colors.border} rounded-lg shadow-xl max-w-[200px]`}
+    >
+      <p className={`${colors.text} font-medium text-sm truncate`}>{label}</p>
+      {payload.map((item, index) => {
+        const typedItem = item as unknown as TooltipPayloadItem;
+        return (
+          <p key={index} className={`${colors.subText} text-xs truncate`}>
+            {typedItem.name}:{" "}
+            {typeof typedItem.value === "number"
+              ? typedItem.value.toLocaleString()
+              : typedItem.value}
+            {typedItem.unit ? ` ${typedItem.unit}` : ""}
           </p>
-          {payload.map((item, index) => (
-            <p key={index} className={`${colors.subText} text-xs truncate`}>
-              {item.name}:{" "}
-              {typeof item.value === "number"
-                ? item.value.toLocaleString()
-                : item.value}
-              {item.unit ? ` ${item.unit}` : ""}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
+        );
+      })}
+    </div>
+  );
+};
 
-  const statistics = useMemo(() => {
-    // Process all satellites
-    const allSatellites = [];
-    data.launches.forEach((launch) => {
-      const satellites = extractSatellites(launch.payload);
-      satellites.forEach((sat) => {
-        if (sat.country && sat.country !== "India") {
-          allSatellites.push({
-            name: sat.name,
-            country: sat.country,
-            mass: sat.mass || 0,
-            year: launch.dateTime.split("-")[0],
-            launchNo: launch.launchNo,
-          });
-        }
-      });
-    });
+type ChartType =
+  | "yearlyForeign"
+  | "topPartners"
+  | "vehiclePerformance"
+  | "launchSites";
 
-    const countryStats = _.chain(allSatellites)
-      .groupBy("country")
-      .map((sats, country) => ({
-        country,
-        totalSatellites: sats.length,
-        totalMass: _.sumBy(sats, "mass"),
-        firstLaunch: _.minBy(sats, "launchNo").launchNo,
-        lastLaunch: _.maxBy(sats, "launchNo").launchNo,
-        years: _.uniq(sats.map((s) => s.year)).length,
-      }))
-      .orderBy(["totalSatellites"], ["desc"])
-      .take(10)
-      .value();
-
-    const yearlyStats = _.chain(allSatellites)
-      .groupBy("year")
-      .map((sats, year) => ({
-        year,
-        satellites: sats.length,
-        countries: _.uniq(sats.map((s) => s.country)).length,
-        totalMass: _.sumBy(sats, "mass"),
-      }))
-      .orderBy(["year"], ["asc"])
-      .value();
-
-    const vehicleStats = _.chain(data.launches)
-      .groupBy("rocket")
-      .map((launches, vehicle) => ({
-        vehicle,
-        launches: launches.length,
-        success: launches.filter((l) => l.launchOutcome === "Success").length,
-        partial: launches.filter(
-          (l) =>
-            l.launchOutcome === "Partial Success" ||
-            l.launchOutcome === "Partial failure"
-        ).length,
-        failure: launches.filter((l) => l.launchOutcome === "Failure").length,
-        totalMass: _.sumBy(launches, "payload.totalMass") || 0,
-      }))
-      .value();
-
-    const siteStats = _.chain(data.launches)
-      .groupBy("launchSite")
-      .map((launches, site) => ({
-        site: site || "Unknown",
-        total: launches.length,
-        success: launches.filter((l) => l.launchOutcome === "Success").length,
-        vehicles: _.uniq(launches.map((l) => l.rocket)).length,
-      }))
-      .value();
-
-    return {
-      countryStats,
-      yearlyStats,
-      vehicleStats,
-      siteStats,
-    };
-  }, [data]);
+const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
+  const [chartType, setChartType] = useState<ChartType>("yearlyForeign");
+  const statistics = useLaunchStatistics(data);
 
   const renderMainChart = () => {
     switch (chartType) {
@@ -216,7 +139,9 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
               width={30}
               fontSize={12}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} colors={colors} />}
+            />
             <Bar
               yAxisId="left"
               dataKey="satellites"
@@ -248,11 +173,13 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
               stroke={colors.chartText}
               width={75}
               fontSize={11}
-              tickFormatter={(value) =>
+              tickFormatter={(value: string) =>
                 value.length > 10 ? `${value.slice(0, 10)}...` : value
               }
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} colors={colors} />}
+            />
             <Bar
               dataKey="totalSatellites"
               name="Total Satellites"
@@ -275,7 +202,9 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
               interval={0}
             />
             <YAxis stroke={colors.chartText} fontSize={12} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} colors={colors} />}
+            />
             <Bar
               dataKey="success"
               name="Successful"
@@ -307,7 +236,7 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
               cx="50%"
               cy="50%"
               outerRadius={100}
-              label={({ name, percent }) =>
+              label={({ name, percent }: { name: string; percent: number }) =>
                 `${name.length > 15 ? name.slice(0, 15) + "..." : name} (${(
                   percent * 100
                 ).toFixed(0)}%)`
@@ -321,25 +250,48 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
                 />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} colors={colors} />}
+            />
             <Legend
               wrapperStyle={{ fontSize: "12px", bottom: 0 }}
-              formatter={(value) =>
+              formatter={(value: string) =>
                 value.length > 20 ? `${value.slice(0, 20)}...` : value
               }
             />
           </PieChart>
         );
-
-      default:
-        return null;
     }
+  };
+
+  const getChartTitle = (type: ChartType): string => {
+    const titles = {
+      yearlyForeign: "Foreign Satellite Launches Over Time",
+      topPartners: "Top International Launch Partners",
+      vehiclePerformance: "Launch Vehicle Success Rates",
+      launchSites: "Launch Site Distribution",
+    };
+    return titles[type];
+  };
+
+  const getChartDescription = (type: ChartType): string => {
+    const descriptions = {
+      yearlyForeign:
+        "Number of foreign satellites and partner countries by year",
+      topPartners: "Countries by total number of satellites launched",
+      vehiclePerformance: "Success and failure rates by launch vehicle",
+      launchSites: "Distribution of launches across different launch sites",
+    };
+    return descriptions[type];
   };
 
   return (
     <div className="space-y-4">
       <div className="mb-4">
-        <Select value={chartType} onValueChange={setChartType}>
+        <Select
+          value={chartType}
+          onValueChange={(value: ChartType) => setChartType(value)}
+        >
           <SelectTrigger className="w-full sm:w-64">
             <SelectValue placeholder="Select chart type" />
           </SelectTrigger>
@@ -365,22 +317,10 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
       >
         <CardHeader className="p-3 sm:p-4">
           <CardTitle className={`${colors.text} text-base sm:text-lg`}>
-            {chartType === "yearlyForeign" &&
-              "Foreign Satellite Launches Over Time"}
-            {chartType === "topPartners" && "Top International Launch Partners"}
-            {chartType === "vehiclePerformance" &&
-              "Launch Vehicle Success Rates"}
-            {chartType === "launchSites" && "Launch Site Distribution"}
+            {getChartTitle(chartType)}
           </CardTitle>
           <CardDescription className={`${colors.subText} text-xs sm:text-sm`}>
-            {chartType === "yearlyForeign" &&
-              "Number of foreign satellites and partner countries by year"}
-            {chartType === "topPartners" &&
-              "Countries by total number of satellites launched"}
-            {chartType === "vehiclePerformance" &&
-              "Success and failure rates by launch vehicle"}
-            {chartType === "launchSites" &&
-              "Distribution of launches across different launch sites"}
+            {getChartDescription(chartType)}
           </CardDescription>
         </CardHeader>
         <CardContent className="h-72 sm:h-96">
@@ -399,7 +339,7 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
           </CardHeader>
           <CardContent className="p-2 sm:p-4">
             <p className={`${colors.text} text-lg sm:text-2xl font-bold`}>
-              {_.sumBy(statistics.countryStats, "totalSatellites")}
+              {statistics.totals.foreignSatellites}
             </p>
           </CardContent>
         </Card>
@@ -412,7 +352,7 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
           </CardHeader>
           <CardContent className="p-2 sm:p-4">
             <p className={`${colors.text} text-lg sm:text-2xl font-bold`}>
-              {statistics.countryStats.length}
+              {statistics.totals.partnerCountries}
             </p>
           </CardContent>
         </Card>
@@ -425,8 +365,7 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
           </CardHeader>
           <CardContent className="p-2 sm:p-4">
             <p className={`${colors.text} text-lg sm:text-2xl font-bold`}>
-              {(_.sumBy(statistics.yearlyStats, "totalMass") / 1000).toFixed(1)}{" "}
-              tons
+              {(statistics.totals.totalMass / 1000).toFixed(1)} tons
             </p>
           </CardContent>
         </Card>
@@ -439,11 +378,10 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
           </CardHeader>
           <CardContent className="p-2 sm:p-4">
             <p className={`${colors.text} text-lg sm:text-2xl font-bold`}>
-              {_.maxBy(statistics.yearlyStats, "satellites").year}
+              {statistics.totals.peakYear.year}
             </p>
             <p className={`${colors.subText} text-xs sm:text-sm`}>
-              {_.maxBy(statistics.yearlyStats, "satellites").satellites}{" "}
-              satellites
+              {statistics.totals.peakYear.satellites} satellites
             </p>
           </CardContent>
         </Card>

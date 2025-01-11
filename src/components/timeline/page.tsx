@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search,
   Rocket,
   Calendar,
   Info,
@@ -11,50 +9,82 @@ import {
   Globe,
   Weight,
   Satellite,
-  X,
   MapPin,
   Flag,
-  ChevronDown,
-  ChevronUp,
-  Filter,
   Clock,
-  Layers,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import FiltersComponent from "./filters";
 
-// Custom hook for media queries
-const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(false);
+interface Satellite {
+  name: string;
+  country: string;
+  mass?: number;
+  massUnit?: string;
+}
 
-  React.useEffect(() => {
-    const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
-    const listener = () => setMatches(media.matches);
-    media.addListener(listener);
-    return () => media.removeListener(listener);
-  }, [matches, query]);
+interface Payload {
+  totalMass?: number;
+  massUnit?: string;
+  satellites: Satellite[];
+}
 
-  return matches;
-};
+interface Launch {
+  launchNo: string;
+  rocket: string;
+  configuration?: string;
+  flightNo: string;
+  dateTime: string;
+  launchOutcome: string;
+  orbit?: string;
+  launchSite?: string;
+  missionDescription: string;
+  user?: string;
+  payload: Payload;
+  notes?: string;
+}
 
-const FilterBadge = ({ label, value, onClear, colors }) => {
-  return value !== "all" ? (
-    <Badge className={`${colors.cardBg} flex items-center gap-1`}>
-      {label}: {value}
-      <X className="w-3 h-3 cursor-pointer" onClick={onClear} />
-    </Badge>
-  ) : null;
-};
+interface Colors {
+  glassBg: string;
+  border: string;
+  text: string;
+  highlight: string;
+  subText: string;
+  cardBg: string;
+}
 
-const TimelineCard = ({ launch, colors }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+interface TimelineCardProps {
+  launch: Launch;
+  colors: Colors;
+}
 
-  const getStatusColor = useCallback((outcome) => {
+interface Filters {
+  year: string;
+  orbit: string;
+  status: string;
+  rocket: string;
+  country: string;
+}
+
+interface UniqueValues {
+  year: string[];
+  orbit: string[];
+  status: string[];
+  rocket: string[];
+  country: string[];
+}
+
+interface TimelineProps {
+  data: Launch[];
+  colors: Colors;
+}
+
+const TimelineCard: React.FC<TimelineCardProps> = ({ launch, colors }) => {
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  const getStatusColor = useCallback((outcome: string): string => {
     switch (outcome.toLowerCase()) {
       case "success":
         return "text-emerald-500 bg-emerald-500/10";
@@ -68,7 +98,7 @@ const TimelineCard = ({ launch, colors }) => {
     }
   }, []);
 
-  const getStatusIcon = useCallback((outcome) => {
+  const getStatusIcon = useCallback((outcome: string): JSX.Element => {
     switch (outcome.toLowerCase()) {
       case "success":
         return <CheckCircle className="w-4 h-4" />;
@@ -79,8 +109,9 @@ const TimelineCard = ({ launch, colors }) => {
     }
   }, []);
 
-  const launchDate = new Date(launch.dateTime.split("|")[0]);
-  const launchTime = launch.dateTime.split("|")[1]?.trim() || "N/A";
+  const [dateStr, timeStr] = launch.dateTime.split("|");
+  const launchDate = new Date(dateStr);
+  const launchTime = timeStr?.trim() || "N/A";
 
   return (
     <div className="relative ml-8 md:ml-16 mb-6">
@@ -105,8 +136,8 @@ const TimelineCard = ({ launch, colors }) => {
                 className={`text-lg md:text-xl flex items-center gap-2 ${colors.text}`}
               >
                 <Rocket className={`w-5 h-5 ${colors.highlight}`} />
-                {launch.rocket}{" "}
-                {launch.configuration && `(${launch.configuration})`} •{" "}
+                {launch.rocket}
+                {launch.configuration && ` (${launch.configuration})`} •{" "}
                 {launch.flightNo}
               </CardTitle>
               <Button variant="ghost" size="sm" className={colors.text}>
@@ -263,98 +294,9 @@ const TimelineCard = ({ launch, colors }) => {
   );
 };
 
-const FilterSection = ({
-  filters,
-  setFilters,
-  uniqueValues,
-  isMobile = false,
-  colors,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const FilterSelect = ({ label, value, options, onChange }) => (
-    <div className="flex flex-col gap-1">
-      <label className={`${colors.subText} text-sm font-medium`}>{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${colors.cardBg} ${colors.text} ${colors.border} rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500`}
-      >
-        <option value="all">All {label}s</option>
-        {options.map((option) => (
-          <option key={`${label}-${option}`} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <div className="md:hidden">
-        <Button
-          variant="outline"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between ${colors.border}`}
-        >
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            <span>Filters</span>
-          </div>
-          {isOpen ? (
-            <ChevronUp className="w-4 h-4" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </Button>
-
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="space-y-3 mt-4"
-            >
-              {Object.entries(filters).map(([key, value]) => (
-                <FilterSelect
-                  key={`mobile-filter-${key}`}
-                  label={key.charAt(0).toUpperCase() + key.slice(1)}
-                  value={value}
-                  options={uniqueValues[key]}
-                  onChange={(value) =>
-                    setFilters((prev) => ({ ...prev, [key]: value }))
-                  }
-                />
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  return (
-    <div className="hidden md:grid grid-cols-5 gap-4">
-      {Object.entries(filters).map(([key, value]) => (
-        <FilterSelect
-          key={`desktop-filter-${key}`}
-          label={key.charAt(0).toUpperCase() + key.slice(1)}
-          value={value}
-          options={uniqueValues[key]}
-          onChange={(value) =>
-            setFilters((prev) => ({ ...prev, [key]: value }))
-          }
-        />
-      ))}
-    </div>
-  );
-};
-
-const Timeline = ({ data, colors }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
+const Timeline: React.FC<TimelineProps> = ({ data, colors }) => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filters, setFilters] = useState<Filters>({
     year: "all",
     orbit: "all",
     status: "all",
@@ -362,15 +304,13 @@ const Timeline = ({ data, colors }) => {
     country: "all",
   });
 
-  const isMobile = useMediaQuery("(max-width: 768px)");
-
-  const uniqueValues = useMemo(() => {
+  const uniqueValues = useMemo<UniqueValues>(() => {
     const values = {
-      year: new Set(),
-      orbit: new Set(),
-      status: new Set(),
-      rocket: new Set(),
-      country: new Set(),
+      year: new Set<string>(),
+      orbit: new Set<string>(),
+      status: new Set<string>(),
+      rocket: new Set<string>(),
+      country: new Set<string>(),
     };
 
     data.forEach((launch) => {
@@ -385,14 +325,14 @@ const Timeline = ({ data, colors }) => {
 
     return Object.fromEntries(
       Object.entries(values).map(([key, set]) => [key, Array.from(set).sort()])
-    );
+    ) as UniqueValues;
   }, [data]);
 
   const filteredLaunches = useMemo(() => {
     const sortedData = [...data].sort((a, b) => {
       const dateA = new Date(a.dateTime.split("|")[0]);
       const dateB = new Date(b.dateTime.split("|")[0]);
-      return dateB - dateA;
+      return dateB.getTime() - dateA.getTime();
     });
 
     const searchTermLower = searchTerm.toLowerCase();
@@ -426,94 +366,27 @@ const Timeline = ({ data, colors }) => {
 
         return true;
       })
-      .sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
+      .sort(
+        (a, b) =>
+          new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
+      );
   }, [data, searchTerm, filters]);
-
-  const activeFilters = Object.entries(filters).filter(
-    ([_, value]) => value !== "all"
-  );
 
   return (
     <div className="relative min-h-screen">
-      <div
-        className={`sticky top-0 z-20 mb-6 p-4 ${colors.glassBg} rounded-xl ${colors.border} 
-                    backdrop-blur-md shadow-lg`}
-      >
-        <div className="space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500" />
-            <Input
-              className={`pl-10 ${colors.cardBg} ${colors.border} ${colors.text}
-                       focus:ring-2 focus:ring-blue-500 w-full`}
-              placeholder="Search launches by rocket, mission, or flight number..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <FiltersComponent
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filters={filters}
+        setFilters={setFilters}
+        uniqueValues={uniqueValues}
+        filteredCount={filteredLaunches.length}
+        totalCount={data.length}
+        colors={colors}
+      />
 
-          {/* Filters */}
-          <FilterSection
-            filters={filters}
-            setFilters={setFilters}
-            uniqueValues={uniqueValues}
-            isMobile={isMobile}
-            colors={colors}
-          />
-
-          {/* Active Filters Display */}
-          {activeFilters.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {activeFilters.map(([key, value]) => (
-                <FilterBadge
-                  key={key}
-                  label={key.charAt(0).toUpperCase() + key.slice(1)}
-                  value={value}
-                  onClear={() =>
-                    setFilters((prev) => ({ ...prev, [key]: "all" }))
-                  }
-                  colors={colors}
-                />
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setFilters({
-                    year: "all",
-                    orbit: "all",
-                    status: "all",
-                    rocket: "all",
-                    country: "all",
-                  })
-                }
-                className="text-blue-500 hover:text-blue-600"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Clear all filters
-              </Button>
-            </div>
-          )}
-
-          {/* Results Count */}
-          <div
-            className={`text-sm ${colors.subText} flex items-center justify-between`}
-          >
-            <span>
-              Showing {filteredLaunches.length} of {data.length} launches
-            </span>
-            <span className="text-blue-500">Latest launches first</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline */}
       <div className="relative">
-        {/* Main timeline line */}
-        <div
-          className="absolute left-0 md:left-4 top-0 bottom-0 w-0.5 
-                     bg-gradient-to-b from-blue-500 via-blue-500/50 to-transparent"
-        />
+        <div className="absolute left-0 md:left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-blue-500/50 to-transparent" />
 
         {filteredLaunches.length > 0 ? (
           filteredLaunches.map((launch) => (
@@ -525,14 +398,13 @@ const Timeline = ({ data, colors }) => {
           ))
         ) : (
           <div
-            className={`ml-8 md:ml-16 p-8 ${colors.glassBg} rounded-xl 
-                       text-center ${colors.text}`}
+            className={`ml-8 md:ml-16 p-8 ${colors.glassBg} rounded-xl text-center ${colors.text}`}
           >
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-blue-500" />
             <h3 className="text-lg font-medium mb-2">No launches found</h3>
             <p className={`${colors.subText} text-sm`}>
-              Try adjusting your search or filters to find what you're looking
-              for.
+              Try adjusting your search or filters to find what you&apos;re
+              looking
             </p>
           </div>
         )}
