@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "lastUpdated": "2024-11-06",
+    "lastUpdated": "2024-12-30",
     "totalLaunches": 96,
     "launchVehicles": [
       "SLV",
@@ -3562,6 +3562,42 @@
       "missionDescription": "PSLV-C59 vehicle carried Proba-3 spacecraft into a highly elliptical orbit as a Dedicated commercial mission of NewSpace India Limited (NSIL)",
       "notes": "Proba-3 is an In-Orbit Demonstration (IOD) mission of the European Space Agency. The mission goal is to demonstrate precise formation flying. It consists of 2 spacecrafts launched in a stacked configuration.",
       "missionType": ["Solar observatory", "Technology demonstrator"]
+    },
+    {
+      "launchNo": 98,
+      "flightNo": "C60",
+      "dateTime": "2024-12-30 | 16:30",
+      "rocket": "PSLV",
+      "configuration": "CA",
+      "launchSite": "FLP - SDSC SHAR",
+      "payload": {
+        "totalMass": 440,
+        "massUnit": "kg",
+        "satellites": [
+          {
+            "name": "SPADEX-A",
+            "country": "India",
+            "mass": 220,
+            "massUnit": "kg"
+          },
+          {
+            "name": "SPADEX-B",
+            "country": "India",
+            "mass": 220,
+            "massUnit": "kg"
+          },
+          {
+            "name": "POEM-4",
+            "country": "India",
+            "note": "24 attached payloads including 14 from ISRO/DOS centers and 10 from Non-Government Entities"
+          }
+        ]
+      },
+      "orbit": "circular",
+      "user": "ISRO",
+      "launchOutcome": "Success",
+      "missionDescription": "Launch of twin SPADEX satellites and POEM-4 with 24 experimental payloads",
+      "notes": "Fourth mission featuring the PSLV Orbital Experimental Module (POEM), carrying a record 24 payloads for in-orbit experiments"
     }
   ]
 }

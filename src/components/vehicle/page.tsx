@@ -22,16 +22,21 @@ import {
   ArrowBigUpDash,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useTheme } from "../themes/ThemeContext";
-import { AnimatedBackground } from "../themes/AnimatedBackground";
 import Image from "next/image";
 import "swiper/css";
-
 import RocketNavigation from "./button";
 import vehicleData from "./vehicle.json";
 import launch_vehicle_images from "./rocket_image";
 
-// Interfaces
+// Animation configuration for default values
+const defaultAnimation = {
+  particleCount: 20,
+  rotationDuration: 20,
+  particleDurationMin: 5,
+  particleDurationMax: 15,
+};
+
+// Keep all interface definitions...
 interface PayloadMass {
   mass: number | { min: number; max: number } | Record<string, any>;
   altitude?: number;
@@ -86,11 +91,11 @@ interface Vehicle {
   variants?: string[] | Array<{ name: string; description: string }>;
 }
 
-// Component interfaces remain the same...
 interface RocketSpecCardProps {
   title: string;
   value: string;
   icon: React.ComponentType<{ size: number; className?: string }>;
+  colors: any;
 }
 
 interface LaunchStatsProps {
@@ -102,15 +107,29 @@ interface LaunchStatsProps {
     first_flight?: string | Record<string, string>;
     last_flight?: string | Record<string, string>;
   };
+  colors: any;
 }
 
 interface StageCardProps {
   stage: string;
   details: any;
   index: number;
+  colors: any;
 }
 
-// Utility functions remain the same...
+interface RocketShowcaseProps {
+  background: string;
+  text: string;
+  contentBackground: string;
+  animationConfig?: {
+    particleCount: number;
+    rotationDuration: number;
+    particleDurationMin: number;
+    particleDurationMax: number;
+  };
+}
+
+// Keep all utility functions...
 const formatPayloadCapacity = (
   payload: PayloadMass | Record<string, any> | undefined
 ): string => {
@@ -172,16 +191,18 @@ const getLatestFlightDate = (
     .split("-")[0];
 };
 
-// Components remain the same...
+// Update the RocketSpecCard component
 const RocketSpecCard: React.FC<RocketSpecCardProps> = ({
   title,
   value,
   icon: Icon,
+  colors,
 }) => {
-  const { colors } = useTheme();
   return (
-    <div className={`${colors.cardBg} p-4 rounded-lg flex items-center gap-3`}>
-      <div className={`${colors.cardGlow} p-2 rounded-md`}>
+    <div
+      className={`${colors.cardBg} bg-opacity-70 backdrop-blur-sm p-4 rounded-lg flex items-center gap-3`}
+    >
+      <div className={`${colors.cardGlow} bg-opacity-50 p-2 rounded-md`}>
         <Icon className={colors.highlight} size={24} />
       </div>
       <div>
@@ -194,9 +215,8 @@ const RocketSpecCard: React.FC<RocketSpecCardProps> = ({
   );
 };
 
-// LaunchStats component remains the same...
-const LaunchStats: React.FC<LaunchStatsProps> = ({ stats }) => {
-  const { colors } = useTheme();
+// Update the LaunchStats component
+const LaunchStats: React.FC<LaunchStatsProps> = ({ stats, colors }) => {
   const total = stats.total_launches || 0;
   const successes = stats.successes || 0;
   const failures = stats.failures || 0;
@@ -204,7 +224,9 @@ const LaunchStats: React.FC<LaunchStatsProps> = ({ stats }) => {
 
   return (
     <div className="grid grid-cols-4 gap-3 mb-4">
-      <div className={`col-span-4 ${colors.cardBg} p-4 rounded-lg`}>
+      <div
+        className={`col-span-4 ${colors.cardBg} bg-opacity-70 backdrop-blur-sm p-4 rounded-lg`}
+      >
         <div className="flex justify-between mb-3">
           <span className={`text-sm font-bold ${colors.text}`}>
             Total Launches: {total}
@@ -214,19 +236,19 @@ const LaunchStats: React.FC<LaunchStatsProps> = ({ stats }) => {
             {total > 0 ? ((successes / total) * 100).toFixed(1) : 0}%
           </span>
         </div>
-        <div className="w-full h-3 bg-gray-200 rounded-sm overflow-hidden">
+        <div className="w-full h-3 bg-gray-200/30 backdrop-blur-sm rounded-sm overflow-hidden">
           <div className="h-full flex">
             <div
               style={{ width: `${(successes / total) * 100}%` }}
-              className="bg-green-500"
+              className="bg-green-500/80"
             />
             <div
               style={{ width: `${(failures / total) * 100}%` }}
-              className="bg-red-500"
+              className="bg-red-500/80"
             />
             <div
               style={{ width: `${(partialFailures / total) * 100}%` }}
-              className="bg-yellow-500"
+              className="bg-yellow-500/80"
             />
           </div>
         </div>
@@ -259,7 +281,7 @@ const LaunchStats: React.FC<LaunchStatsProps> = ({ stats }) => {
       ].map(({ icon: Icon, label, value, color }) => (
         <div
           key={label}
-          className={`${colors.cardBg} p-3 rounded-lg flex items-center gap-2`}
+          className={`${colors.cardBg} bg-opacity-70 backdrop-blur-sm p-3 rounded-lg flex items-center gap-2`}
         >
           <Icon className={color} size={16} />
           <div>
@@ -272,20 +294,29 @@ const LaunchStats: React.FC<LaunchStatsProps> = ({ stats }) => {
   );
 };
 
-const StageCard: React.FC<StageCardProps> = ({ stage, details, index }) => {
-  const { colors } = useTheme();
+// Update the StageCard component
+const StageCard: React.FC<StageCardProps> = ({
+  stage,
+  details,
+  index,
+  colors,
+}) => {
   return (
-    <div className={`${colors.cardBg} p-4 rounded-lg space-y-3`}>
+    <div
+      className={`${colors.cardBg} bg-opacity-70 backdrop-blur-sm p-4 rounded-lg space-y-3`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`${colors.cardGlow} p-2 rounded-md`}>
+          <div className={`${colors.cardGlow} bg-opacity-50 p-2 rounded-md`}>
             <ArrowBigUpDash className={colors.highlight} size={20} />
           </div>
           <h4 className={`font-bold ${colors.text}`}>
             {stage.replace(/_/g, " ")}
           </h4>
         </div>
-        <span className={`text-xs px-3 py-1 rounded-md ${colors.cardGlow}`}>
+        <span
+          className={`text-xs px-3 py-1 rounded-md ${colors.cardGlow} bg-opacity-50`}
+        >
           Stage {index + 1}
         </span>
       </div>
@@ -330,44 +361,37 @@ const StageCard: React.FC<StageCardProps> = ({ stage, details, index }) => {
   );
 };
 
-// Main Component
-const RocketShowcase: React.FC = () => {
+// Main Component with colors object
+const RocketShowcase: React.FC<RocketShowcaseProps> = ({
+  background,
+  text,
+  contentBackground,
+  animationConfig = defaultAnimation,
+}) => {
   const [vehicles] = useState<Vehicle[]>(() => {
-    // Get vehicles from the launch_vehicles section of the new JSON structure
-    return Object.entries(vehicleData.launch_vehicles).map(([key, vehicle]) => {
-      // Find generation info from metadata
-      let generation = null;
-      const generations = vehicleData.metadata.vehicle_generations;
-
-      Object.entries(generations).forEach(
-        ([genKey, genData]: [string, any]) => {
-          const vehicles = Array.isArray(genData.vehicle)
-            ? genData.vehicle
-            : [genData.vehicle];
-
-          if (vehicles.includes(key.split("_")[0])) {
-            generation = {
-              generation: genKey.replace(/_/g, " "),
-              period: genData.period,
-              description: genData.description,
-            };
-          }
-        }
-      );
-
-      return {
+    return Object.entries(vehicleData.launch_vehicles).map(
+      ([key, vehicle]) => ({
         id: key,
         name: key,
         ...vehicle,
-        generation,
-      };
-    });
+      })
+    );
   });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle>(vehicles[0]);
-  const { colors } = useTheme();
   const swiperRef = React.useRef<SwiperType>();
+
+  // Define colors object
+  const colors = {
+    background,
+    text,
+    subText: "text-slate-400",
+    highlight: "text-blue-500",
+    cardBg: contentBackground,
+    cardGlow: "bg-blue-500/10",
+    border: "border-slate-700/20",
+  };
 
   const handleSlideChange = (swiper: SwiperType) => {
     setCurrentIndex(swiper.activeIndex);
@@ -405,9 +429,8 @@ const RocketShowcase: React.FC = () => {
 
   return (
     <section
-      className={`relative h-screen py-6 px-4 sm:px-6 lg:px-8 ${colors.background}`}
+      className={`relative h-screen py-6 px-4 sm:px-6 lg:px-8 ${colors.background} bg-opacity-50 backdrop-blur-sm`}
     >
-      <AnimatedBackground />
       <div className="max-w-7xl mx-auto relative z-10 h-full">
         <div className="flex flex-col xl:flex-row xl:gap-8 h-full">
           {/* Image Card */}
@@ -429,7 +452,7 @@ const RocketShowcase: React.FC = () => {
               {vehicles.map((vehicle) => (
                 <SwiperSlide key={vehicle.id}>
                   <motion.div
-                    className="relative w-full h-full bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center overflow-hidden group"
+                    className="relative w-full h-full bg-gradient-to-b from-slate-900/80 to-slate-800/80 backdrop-blur-sm flex items-center justify-center overflow-hidden group"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
@@ -443,7 +466,7 @@ const RocketShowcase: React.FC = () => {
                       />
                     </div>
                     <div
-                      className={`absolute inset-x-0 bottom-0 ${colors.cardBg} backdrop-blur-lg bg-opacity-95 p-4`}
+                      className={`absolute inset-x-0 bottom-0 ${colors.cardBg} backdrop-blur-lg bg-opacity-70 p-4`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className={`text-xl font-bold ${colors.text}`}>
@@ -452,11 +475,11 @@ const RocketShowcase: React.FC = () => {
                         <span
                           className={`px-2 py-1 rounded-md text-xs font-medium ${
                             vehicle.status === "Active"
-                              ? "bg-green-500"
+                              ? "bg-green-500/80"
                               : vehicle.status === "Retired"
-                              ? "bg-red-500"
-                              : "bg-yellow-500"
-                          } text-white`}
+                              ? "bg-red-500/80"
+                              : "bg-yellow-500/80"
+                          } backdrop-blur-sm text-white`}
                         >
                           {vehicle.status}
                         </span>
@@ -503,7 +526,9 @@ const RocketShowcase: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className={`${colors.cardBg} rounded-xl p-6 h-full`}>
+            <div
+              className={`${colors.cardBg} bg-opacity-70 backdrop-blur-lg backdrop-saturate-150 rounded-xl p-6 h-full`}
+            >
               <RocketNavigation
                 prev={prev}
                 next={next}
@@ -522,11 +547,11 @@ const RocketShowcase: React.FC = () => {
                       <span
                         className={`px-3 py-1 rounded-md text-xs font-medium ${
                           currentVehicle.status === "Active"
-                            ? "bg-green-500"
+                            ? "bg-green-500/80"
                             : currentVehicle.status === "Retired"
-                            ? "bg-red-500"
-                            : "bg-yellow-500"
-                        } text-white`}
+                            ? "bg-red-500/80"
+                            : "bg-yellow-500/80"
+                        } backdrop-blur-sm text-white`}
                       >
                         {currentVehicle.status}
                       </span>
@@ -557,7 +582,7 @@ const RocketShowcase: React.FC = () => {
                   </div>
                   {currentVehicle.generation && (
                     <div
-                      className={`${colors.cardGlow} p-3 rounded-lg text-right`}
+                      className={`${colors.cardGlow} bg-opacity-50 p-3 rounded-lg text-right`}
                     >
                       <p className={`text-xs font-bold ${colors.text}`}>
                         {currentVehicle.generation.generation} Generation
@@ -579,16 +604,19 @@ const RocketShowcase: React.FC = () => {
                         title="Height"
                         value={`${currentVehicle.dimensions.height}m`}
                         icon={Ruler}
+                        colors={colors}
                       />
                       <RocketSpecCard
                         title="Diameter"
                         value={`${currentVehicle.dimensions.diameter}m`}
                         icon={Target}
+                        colors={colors}
                       />
                       <RocketSpecCard
                         title="Mass"
                         value={formatMass(currentVehicle.dimensions.mass)}
                         icon={Weight}
+                        colors={colors}
                       />
                     </div>
                   </div>
@@ -607,6 +635,7 @@ const RocketShowcase: React.FC = () => {
                             currentVehicle.payload_capacity.LEO
                           )}
                           icon={Rocket}
+                          colors={colors}
                         />
                       )}
                       {currentVehicle.payload_capacity.GTO && (
@@ -616,6 +645,7 @@ const RocketShowcase: React.FC = () => {
                             currentVehicle.payload_capacity.GTO
                           )}
                           icon={Globe2}
+                          colors={colors}
                         />
                       )}
                       {currentVehicle.payload_capacity.SSO && (
@@ -625,6 +655,7 @@ const RocketShowcase: React.FC = () => {
                             currentVehicle.payload_capacity.SSO
                           )}
                           icon={Boxes}
+                          colors={colors}
                         />
                       )}
                     </div>
@@ -636,7 +667,10 @@ const RocketShowcase: React.FC = () => {
                     <h3 className={`text-lg font-bold mb-3 ${colors.text}`}>
                       Launch History
                     </h3>
-                    <LaunchStats stats={currentVehicle.launch_history} />
+                    <LaunchStats
+                      stats={currentVehicle.launch_history}
+                      colors={colors}
+                    />
                   </div>
                 )}
 
@@ -654,6 +688,7 @@ const RocketShowcase: React.FC = () => {
                             stage={stage}
                             details={details}
                             index={index}
+                            colors={colors}
                           />
                         ))}
                     </div>
@@ -669,7 +704,7 @@ const RocketShowcase: React.FC = () => {
                       {currentVehicle.special_features.map((feature, index) => (
                         <div
                           key={index}
-                          className={`${colors.cardBg} p-3 rounded-lg flex items-start gap-2`}
+                          className={`${colors.cardBg} bg-opacity-70 backdrop-blur-sm p-3 rounded-lg flex items-start gap-2`}
                         >
                           <Rocket
                             className={`${colors.highlight} mt-1`}
