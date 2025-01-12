@@ -72,6 +72,13 @@ interface TooltipPayloadItem {
   unit?: string;
 }
 
+type ChartType =
+  | "yearlyForeign"
+  | "yearlyLaunches"
+  | "topPartners"
+  | "vehiclePerformance"
+  | "launchSites";
+
 const CustomTooltip: React.FC<CustomTooltipProps> = ({
   active,
   payload,
@@ -101,15 +108,32 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
   );
 };
 
-type ChartType =
-  | "yearlyForeign"
-  | "topPartners"
-  | "vehiclePerformance"
-  | "launchSites";
-
 const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
   const [chartType, setChartType] = useState<ChartType>("yearlyForeign");
   const statistics = useLaunchStatistics(data);
+
+  const getChartTitle = (type: ChartType): string => {
+    const titles = {
+      yearlyForeign: "Foreign Satellite Launches Over Time",
+      yearlyLaunches: "Annual Launch Activity",
+      topPartners: "Top International Launch Partners",
+      vehiclePerformance: "Launch Vehicle Success Rates",
+      launchSites: "Launch Site Distribution",
+    };
+    return titles[type];
+  };
+
+  const getChartDescription = (type: ChartType): string => {
+    const descriptions = {
+      yearlyForeign:
+        "Number of foreign satellites and partner countries by year",
+      yearlyLaunches: "Annual number of launches and foreign satellites",
+      topPartners: "Countries by total number of satellites launched",
+      vehiclePerformance: "Success and failure rates by launch vehicle",
+      launchSites: "Distribution of launches across different launch sites",
+    };
+    return descriptions[type];
+  };
 
   const renderMainChart = () => {
     switch (chartType) {
@@ -154,6 +178,51 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
               dataKey="countries"
               name="Partner Countries"
               stroke={colors.chartColors[1]}
+            />
+          </ComposedChart>
+        );
+
+      case "yearlyLaunches":
+        return (
+          <ComposedChart data={statistics.yearlyStats}>
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.chartGrid} />
+            <XAxis
+              dataKey="year"
+              stroke={colors.chartText}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              interval={1}
+              fontSize={12}
+            />
+            <YAxis
+              yAxisId="left"
+              stroke={colors.chartText}
+              width={40}
+              fontSize={12}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              stroke={colors.chartText}
+              width={30}
+              fontSize={12}
+            />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} colors={colors} />}
+            />
+            <Bar
+              yAxisId="left"
+              dataKey="launches"
+              name="Total Launches"
+              fill={colors.chartColors[2]}
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="satellites"
+              name="Foreign Satellites"
+              stroke={colors.chartColors[0]}
             />
           </ComposedChart>
         );
@@ -264,27 +333,6 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
     }
   };
 
-  const getChartTitle = (type: ChartType): string => {
-    const titles = {
-      yearlyForeign: "Foreign Satellite Launches Over Time",
-      topPartners: "Top International Launch Partners",
-      vehiclePerformance: "Launch Vehicle Success Rates",
-      launchSites: "Launch Site Distribution",
-    };
-    return titles[type];
-  };
-
-  const getChartDescription = (type: ChartType): string => {
-    const descriptions = {
-      yearlyForeign:
-        "Number of foreign satellites and partner countries by year",
-      topPartners: "Countries by total number of satellites launched",
-      vehiclePerformance: "Success and failure rates by launch vehicle",
-      launchSites: "Distribution of launches across different launch sites",
-    };
-    return descriptions[type];
-  };
-
   return (
     <div className="space-y-4">
       <div className="mb-4">
@@ -298,6 +346,9 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
           <SelectContent>
             <SelectItem value="yearlyForeign">
               Foreign Satellites Timeline
+            </SelectItem>
+            <SelectItem value="yearlyLaunches">
+              Annual Launch Activity
             </SelectItem>
             <SelectItem value="topPartners">
               Top International Partners

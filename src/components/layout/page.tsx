@@ -1,4 +1,3 @@
-// LaunchVisualizer.tsx
 "use client";
 
 import React, { useState, useCallback, memo } from "react";
@@ -7,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Rocket } from "lucide-react";
 import StatsGrid from "@/components/grid/page";
 import Footer from "@/components/layout/footer";
+import Header from "@/components/layout/header";
 import Hero from "@/components/layout/hero";
 import { LaunchData } from "@/theme/types";
 import Timeline from "@/components/timeline/page";
@@ -201,13 +201,17 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
   return (
     <div className={`min-h-screen ${theme.background} ${theme.text}`}>
       <AnimatedBackground animationConfig={animationConfig} />
+      <div className="relative">
+        <Header onTabChange={handleTabChange} selectedTab={selectedTab} />
 
-      <Hero
-        title="ISRO Launch Analytics"
-        subtitle={`Exploring India's Journey to the Stars (Last Updated: ${launchData.metadata.lastUpdated})`}
-        videoUrl="/0108.mp4"
-      />
-
+        <div className="py-6">
+          <Hero
+            title="ISRO Launch Analytics"
+            subtitle={`Exploring India's Journey to the Stars (Last Updated: ${launchData.metadata.lastUpdated})`}
+            videoUrl="/0108.mp4"
+          />
+        </div>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -222,9 +226,8 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
           onTabChange={handleTabChange}
           launchData={launchData}
         />
-
-        <Footer />
       </motion.div>
+      <Footer /> {/* Add this line here */}
     </div>
   );
 };
