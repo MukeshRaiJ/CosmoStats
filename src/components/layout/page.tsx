@@ -12,6 +12,7 @@ import { LaunchData } from "@/theme/types";
 import Timeline from "@/components/timeline/page";
 import Overview from "@/components/payloads/page";
 import RocketShowcase from "@/components/vehicle/page";
+import SatelliteTimeline from "@/components/satellites/page";
 import AnimatedBackground, {
   theme,
   defaultAnimation,
@@ -79,12 +80,21 @@ interface TabsSectionProps {
   selectedTab: string;
   onTabChange: (tab: string) => void;
   launchData: LaunchData;
+  satelliteData: {
+    indian_satellite_launches: any[];
+  };
 }
 
 // TabsSection Component
 const TabsSection = memo<TabsSectionProps>(
-  ({ selectedTab, onTabChange, launchData }) => {
-    const tabItems = ["Overview", "Vehicles", "Timeline", "Payloads"];
+  ({ selectedTab, onTabChange, launchData, satelliteData }) => {
+    const tabItems = [
+      "Overview",
+      "Vehicles",
+      "Timeline",
+      "Satellites",
+      "Payloads",
+    ];
 
     // Convert launchNo to string in launches array
     const launches =
@@ -101,7 +111,7 @@ const TabsSection = memo<TabsSectionProps>(
       >
         <TabsList
           className={`${theme.tabBackground} backdrop-blur-lg backdrop-saturate-150 
-          p-1 rounded-xl w-full grid grid-cols-4`}
+          p-1 rounded-xl w-full grid grid-cols-5`}
         >
           {tabItems.map((tab) => (
             <TabsTrigger
@@ -145,6 +155,20 @@ const TabsSection = memo<TabsSectionProps>(
           />
         </TabsContent>
 
+        <TabsContent value="satellites" className="w-full">
+          <SatelliteTimeline
+            data={satelliteData.indian_satellite_launches}
+            colors={{
+              text: theme.text,
+              subText: "text-slate-400",
+              border: "border-slate-700/20",
+              glassBg: theme.contentBackground,
+              cardBg: theme.contentBackground,
+              highlight: "text-blue-500",
+            }}
+          />
+        </TabsContent>
+
         <TabsContent value="payloads" className="w-full">
           <div
             className={`${theme.text} ${theme.contentBackground} 
@@ -169,6 +193,9 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
   animationConfig = defaultAnimation,
 }) => {
   const [launchData, setLaunchData] = useState<LaunchData | null>(null);
+  const [satelliteData, setSatelliteData] = useState<{
+    indian_satellite_launches: any[];
+  } | null>(null);
   const [selectedTab, setSelectedTab] = useState<string>("overview");
   const [loading, setLoading] = useState(true);
 
@@ -178,11 +205,18 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/isro_data.json");
-        const data = await response.json();
-        setLaunchData(data);
+        const [launchResponse, satelliteResponse] = await Promise.all([
+          fetch("/isro_data.json"),
+          fetch("/satellites.json"),
+        ]);
+        const [launchData, satelliteData] = await Promise.all([
+          launchResponse.json(),
+          satelliteResponse.json(),
+        ]);
+        setLaunchData(launchData);
+        setSatelliteData(satelliteData);
       } catch (error) {
-        console.error("Error fetching launch data:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -194,7 +228,7 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
     return <LoadingScreen />;
   }
 
-  if (!launchData) {
+  if (!launchData || !satelliteData) {
     return <div>Error loading data</div>;
   }
 
@@ -225,9 +259,10 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
           selectedTab={selectedTab}
           onTabChange={handleTabChange}
           launchData={launchData}
+          satelliteData={satelliteData}
         />
       </motion.div>
-      <Footer /> {/* Add this line here */}
+      <Footer />
     </div>
   );
 };
