@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { FaRegCopyright } from "react-icons/fa";
 import { RiRocketLine } from "react-icons/ri";
 import { motion } from "framer-motion";
 

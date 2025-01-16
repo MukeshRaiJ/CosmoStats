@@ -3,7 +3,6 @@ import React, { useState, useMemo } from "react";
 import {
   Rocket,
   Calendar,
-  Info,
   AlertCircle,
   CheckCircle,
   XCircle,

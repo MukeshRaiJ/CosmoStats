@@ -8,18 +8,56 @@ import StatsGrid from "@/components/grid/page";
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
 import Hero from "@/components/layout/hero";
-import { LaunchData } from "@/theme/types";
 import Timeline from "@/components/timeline/page";
 import Overview from "@/components/payloads/page";
 import RocketShowcase from "@/components/vehicle/page";
 import SatelliteTimeline from "@/components/satellites/page";
+import LaunchesOverview from "@/components/upcoming/page";
 import AnimatedBackground, {
   theme,
   defaultAnimation,
 } from "./AnimatedBackground";
 
+// Define base interfaces
+interface Launch {
+  launchNo: number;
+  // Add other launch properties here
+}
+
+export interface LaunchData {
+  launches: Launch[];
+  metadata: {
+    lastUpdated: string;
+  };
+}
+
+interface SatelliteLaunch {
+  name: string;
+  launchDate: string;
+  launchVehicle: string;
+  mass: number;
+  orbit: string;
+  purpose: string;
+  status: string;
+}
+
+interface SatelliteData {
+  indian_satellite_launches: SatelliteLaunch[];
+}
+
+interface ThemeColors {
+  background: string;
+  text: string;
+  subText: string;
+  border: string;
+  glassBg: string;
+  chartGrid: string;
+  chartText: string;
+  chartColors: string[];
+}
+
 // Theme for Overview component
-const overviewColors = {
+const overviewColors: ThemeColors = {
   background: "bg-slate-900",
   text: "text-slate-100",
   subText: "text-slate-400",
@@ -31,7 +69,7 @@ const overviewColors = {
 };
 
 // Loading Screen Component
-const LoadingScreen = () => {
+const LoadingScreen: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-slate-900">
       <motion.div
@@ -80,9 +118,7 @@ interface TabsSectionProps {
   selectedTab: string;
   onTabChange: (tab: string) => void;
   launchData: LaunchData;
-  satelliteData: {
-    indian_satellite_launches: any[];
-  };
+  satelliteData: SatelliteData;
 }
 
 // TabsSection Component
@@ -94,7 +130,8 @@ const TabsSection = memo<TabsSectionProps>(
       "Timeline",
       "Satellites",
       "Payloads",
-    ];
+      "Launches",
+    ] as const;
 
     // Convert launchNo to string in launches array
     const launches =
@@ -111,7 +148,7 @@ const TabsSection = memo<TabsSectionProps>(
       >
         <TabsList
           className={`${theme.tabBackground} backdrop-blur-lg backdrop-saturate-150 
-          p-1 rounded-xl w-full grid grid-cols-5`}
+          p-1 rounded-xl w-full grid grid-cols-6`}
         >
           {tabItems.map((tab) => (
             <TabsTrigger
@@ -177,6 +214,10 @@ const TabsSection = memo<TabsSectionProps>(
             Payloads component coming soon...
           </div>
         </TabsContent>
+
+        <TabsContent value="launches" className="w-full">
+          <LaunchesOverview launchData={launchData} />
+        </TabsContent>
       </Tabs>
     );
   }
@@ -193,11 +234,11 @@ const LaunchVisualizer: React.FC<LaunchVisualizerProps> = ({
   animationConfig = defaultAnimation,
 }) => {
   const [launchData, setLaunchData] = useState<LaunchData | null>(null);
-  const [satelliteData, setSatelliteData] = useState<{
-    indian_satellite_launches: any[];
-  } | null>(null);
+  const [satelliteData, setSatelliteData] = useState<SatelliteData | null>(
+    null
+  );
   const [selectedTab, setSelectedTab] = useState<string>("overview");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const handleTabChange = useCallback((tab: string) => setSelectedTab(tab), []);
 

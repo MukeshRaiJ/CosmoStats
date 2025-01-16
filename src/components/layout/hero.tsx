@@ -98,7 +98,7 @@ const Hero: React.FC<HeroProps> = ({ videoUrl }) => {
               className="space-y-4"
             >
               <p className="text-lg sm:text-xl md:text-lg lg:text-xl xl:text-2xl text-white md:text-current font-light tracking-wide max-w-2xl">
-                Exploring India's Journey to the Stars <br />
+                Exploring India&apos;s Journey to the Stars <br />
                 Last Updated: 2024-12-30
               </p>
             </motion.div>
