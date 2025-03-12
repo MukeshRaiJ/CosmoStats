@@ -344,11 +344,11 @@ const Overview: React.FC<OverviewProps> = ({ data, colors }) => {
             <SelectValue placeholder="Select chart type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="yearlyForeign">
-              Foreign Satellites Timeline
-            </SelectItem>
             <SelectItem value="yearlyLaunches">
               Annual Launch Activity
+            </SelectItem>
+            <SelectItem value="yearlyForeign">
+              Foreign Satellites Timeline
             </SelectItem>
             <SelectItem value="topPartners">
               Top International Partners

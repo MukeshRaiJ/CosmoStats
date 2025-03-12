@@ -83,7 +83,7 @@ const Hero: React.FC<HeroProps> = ({ videoUrl }) => {
                   </span>
                   <div className="flex items-center gap-3 sm:gap-4">
                     <span className="text-3xl sm:text-6xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-none text-white/90 md:text-current/90">
-                      LAUNCH ANALYTICS
+                      LAUNCH LOGS
                     </span>
                   </div>
                 </div>

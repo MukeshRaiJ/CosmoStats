@@ -13,6 +13,7 @@ import Overview from "@/components/payloads/page";
 import RocketShowcase from "@/components/vehicle/page";
 import SatelliteTimeline from "@/components/satellites/page";
 import LaunchesOverview from "@/components/upcoming/page";
+import Payload from "@/components/payload_mix/page";
 import AnimatedBackground, {
   theme,
   defaultAnimation,
